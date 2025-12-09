@@ -2,11 +2,38 @@ server:
   port: 8086
 
 spring:
+  application:
+    name: USERSERVICE
   datasource:
     url: jdbc:mysql://localhost:3306/microservices
     username: root
     password: 12345
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+  config:
+    import: configserver:http://localhost:8091
+
+  secutiy:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://trial-6209588.okta.com/oauth2/default
+          audience: api://default
+
+      client:
+        registration:
+          my-internal-client:
+            provider: okta
+            authorization-grant-type: client_credentials
+            scope: internal
+            client-id: 0oay4m62paz2odrJ1697
+            client-secret: oDf4PxnyRPqiC7OZ5aO88FC9EkarXJuozCRJw22x2mVlaXfK7i3_vSoghdTcUPLW
+        provider:
+          okta:
+            issuer-uri: https://trial-6209588.okta.com/oauth2/default
+
+  # profiles:
+  #   active: prod
 
   jpa:
     hibernate:
@@ -15,12 +42,64 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
+# eureka:
+#   instance:
+#     prefer-ip-address: true
+#   client:
+#     fetch-registry: true
+#     register-with-eureka: true
+#     service-url:
+#       defaultZone: http://localhost:8761/eureka/
 
-eureka:
-  instance:
-    prefer-ip-address: true
-  client:
-    fetch-registry: true
-    register-with-eureka: true
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
+# As we are using spring cloud config server so we don't need to keep eureka configuration here.
+# because it will be fetched from config server.As config server is already registered with eureka.
+
+# configuratuons of resilience4j
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      ratingHotelBreaker:
+        registerHealthIndicator: true
+        event-consumer-buffer-size: 10
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        automatic-transition-from-open-to-half-open-enabled: true
+        permitted-number-of-calls-in-half-open-state: 3
+        slidingWindowType: COUNT_BASED
+
+  # Configuration for Retry mechanism
+  # retry:
+  #   instances:
+  #     ratingHotelRetry:
+  #       max-attempts: 4
+  #       wait-duration: 2s
+
+  #configuration for RateLimiter
+  # ratelimiter:
+
+  ratelimiter:
+    instances:
+      userRateLimiter:
+        limit-for-period: 5
+        limit-refresh-period: 10s
+        timeout-duration: 2s
+
+  okta:
+    oauth2:
+      issuer: https://trial-6209588.okta.com/oauth2/default
+      audience: api://default
